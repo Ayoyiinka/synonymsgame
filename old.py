@@ -10,25 +10,17 @@ app.secret_key = os.environ['SECRET_KEY']
 headers = {'x-rapidapi-host': os.environ['X-RAPIDAPI-HOST'], 'x-rapidapi-key': os.environ['X-RAPIDAPI-KEY']}
 
 def get_word():
-    synonymAvailable = True
-    while(synonymAvailable):
-        url = "https://wordsapiv1.p.rapidapi.com/words/?hasDetails=synonyms"
-        page = str(random.randint(1,200))
-        querystring = {"page":page}
-        res = requests.request("GET", url, headers=headers, params=querystring)
-        results = res.json()['results']['data']
-        for result in results:
-            random_word = result
-            url_ = "https://wordsapiv1.p.rapidapi.com/words/" + result + "/synonyms"
-            response = requests.request("GET", url_, headers=headers)
-            json = response.json()
-            synonyms = json['synonyms']
-            if len(synonyms) < 1:
-                continue
-            else:
-                synonymAvailable = False
-                break
-    return random_word, synonyms
+    rand = random.randint(4,10)
+    url = "https://wordsapiv1.p.rapidapi.com/words/?letters=" + str(rand)
+    res = requests.request("GET", url, headers=headers)
+    results = res.json()['results']['data']
+    words=[]
+    for result in results:
+        if result.isalpha():
+            words.append(result)
+    if len(words) > 0:
+        return words[random.randint(0,len(words)-1)]
+    return results[random.randint(0,len(results)-1)]
 
 @app.route('/synonymsgame', methods=['POST'])
 def bot():
@@ -40,9 +32,8 @@ def bot():
         if incoming_msg.strip().lower() == "yes" or incoming_msg.strip().lower() == "new game":
             session["Game Started?"] = True
             session["num_corr_ques"] = 0
-            random_word, synonyms = get_word()
-            session["random_word"] = random_word
-            session["synonyms"] = synonyms
+            random_word = get_word()
+            session["random_word"] = random_word 
             msg.body("First word: " + random_word)
             return str(resp)
         else:
@@ -51,21 +42,25 @@ def bot():
     else:
         in_ = incoming_msg.strip().lower()
         random_word = session["random_word"]
-        synonyms = session["synonyms"]
+        url = "https://wordsapiv1.p.rapidapi.com/words/" + random_word + "/synonyms"
+        response = requests.request("GET", url, headers=headers)
+        json = response.json()
+        synonyms = json['synonyms']
+        if len(synonyms) <= 0:
+            session.pop("random_word")
+            session["random_word"] = get_word()
+            msg.body("No synonyms for " + random_word + ", next word: " + session["random_word"])
+            return str(resp)
 
         if in_ in synonyms:
             session["num_corr_ques"] += 1
             session.pop("random_word")
-            session.pop("synonyms")
-            random_word, synonyms = get_word()
+            random_word = get_word()
             session["random_word"] = random_word
-            session["synonyms"] = synonyms
             msg.body("Correct!, next word: " + random_word)
 
         else:
             session.pop("Game Started?")
-            session.pop("random_word")
-            session.pop("synonyms")
             msg.body("Game over! " + "You got " + str(session["num_corr_ques"]) + " questions correctly" + \
                     "\n\nSynonyms for " + random_word + " are <" + ", ".join(synonyms) + ">" + \
                     "\n\nType <new game> to start a new game")
