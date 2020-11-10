@@ -1,7 +1,6 @@
-from flask import Flask, request, session
+from flask import Flask, session, request
 import requests
 from twilio.twiml.messaging_response import MessagingResponse
-import pandas as pd
 import random, os
 
 app = Flask(__name__)
@@ -10,24 +9,16 @@ app.secret_key = os.environ['SECRET_KEY']
 headers = {'x-rapidapi-host': os.environ['X-RAPIDAPI-HOST'], 'x-rapidapi-key': os.environ['X-RAPIDAPI-KEY']}
 
 def get_word():
-    synonymAvailable = True
-    while(synonymAvailable):
-        url = "https://wordsapiv1.p.rapidapi.com/words/?hasDetails=synonyms"
-        page = str(random.randint(1,200))
-        querystring = {"page":page}
-        res = requests.request("GET", url, headers=headers, params=querystring)
-        results = res.json()['results']['data']
-        for result in results:
-            random_word = result
-            url_ = "https://wordsapiv1.p.rapidapi.com/words/" + result + "/synonyms"
-            response = requests.request("GET", url_, headers=headers)
-            json = response.json()
-            synonyms = json['synonyms']
-            if len(synonyms) < 1:
-                continue
-            else:
-                synonymAvailable = False
-                break
+    url = "https://wordsapiv1.p.rapidapi.com/words/?hasDetails=synonyms"
+    page = str(random.randint(1,200))
+    querystring = {"page":page}
+    res = requests.request("GET", url, headers=headers, params=querystring)
+    results = res.json()['results']['data']
+    random_word = results[random.randint(1, len(results))]
+    url_ = "https://wordsapiv1.p.rapidapi.com/words/" + random_word + "/synonyms"
+    response = requests.request("GET", url_, headers=headers)
+    json = response.json()
+    synonyms = json['synonyms']
     return random_word, synonyms
 
 @app.route('/synonymsgame', methods=['POST'])
