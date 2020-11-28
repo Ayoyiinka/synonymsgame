@@ -6,19 +6,16 @@ import random, os
 app = Flask(__name__)
 
 app.secret_key = os.environ['SECRET_KEY']
-headers = {'x-rapidapi-host': os.environ['X-RAPIDAPI-HOST'], 'x-rapidapi-key': os.environ['X-RAPIDAPI-KEY']}
+your_api_key = os.environ['API_KEY']
 
 def get_word():
-    url = "https://wordsapiv1.p.rapidapi.com/words/?hasDetails=synonyms"
-    page = str(random.randint(1,200))
-    querystring = {"page":page}
-    res = requests.request("GET", url, headers=headers, params=querystring)
-    results = res.json()['results']['data']
+    url = "https://raw.githubusercontent.com/dariusk/corpora/master/data/words/common.json"
+    res = requests.request("GET", url)
+    results = res.json()['commonWords']
     random_word = results[random.randint(1, len(results))]
-    url_ = "https://wordsapiv1.p.rapidapi.com/words/" + random_word + "/synonyms"
-    response = requests.request("GET", url_, headers=headers)
-    json = response.json()
-    synonyms = json['synonyms']
+    url_ = "https://www.dictionaryapi.com/api/v3/references/thesaurus/json/" + random_word + "?key=" + your_api_key
+    response = requests.request("GET", url_)
+    synonyms = response.json()[0]['meta']['syns'][0]
     return random_word, synonyms
 
 @app.route('/synonymsgame', methods=['POST'])
